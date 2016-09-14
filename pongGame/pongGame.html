@@ -1,0 +1,218 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <title>Pong Game</title>
+    </head>
+    <body>
+    
+        <nav>
+            <p><label><input id='pause' type='button' value='pause'></label>
+            <label><input id='start' type='button' value="start"> </label></p>
+            <p id='count'> 0 </p>
+        </nav>
+        
+    <style>
+	   canvas {
+		  display: block;
+		  position: absolute;
+		  margin: auto;
+		  top: 10%;
+		  bottom: 0;
+		  left: 0;
+		  right: 0;
+	   }
+        nav {
+            display: block;
+		    position: absolute;
+		    left: 45%;
+            
+        }
+	</style>
+    
+    
+    <script>
+    
+        
+        var WIDTH = 700 , HEIGHT =600 ,pi = Math.PI;
+        var UpArrow = 38, DownArrow = 40;
+        var canvas,ctx,keystate;
+        var palyer, ai, ball;
+        var pause_vel= {};
+        palyer ={
+            x : null,
+            y:null,
+            width : 20,
+            height : 100,
+            update : function(){
+                if (keystate[UpArrow]) this.y -= 7;
+                if (keystate[DownArrow]) this.y += 7;
+                
+                /* boundary for player*/
+                if(this.y < 0) 
+                    this.y = 0;
+                if(this.y > HEIGHT-this.height)
+                    this.y =HEIGHT-this.height;
+            },
+            
+            draw: function(){
+                ctx.fillRect(this.x,this.y,this.width,this.height);
+            },
+        };
+        
+        ai ={
+            x : null,
+            y:null,
+            width : 20,
+            height : 100,
+            update : function(){
+                this.y = ball.y;
+            },
+            
+            draw : function(){
+                ctx.fillRect(this.x,this.y,this.width,this.height);
+            }
+        };
+        
+        ball ={
+            x : null,
+            y:null,
+            vel : null,
+            side : 20,
+            speed : 5,
+            count : document.getElementById('count'),
+            update : function(){
+                this.x += this.vel.x;
+                this.y += this.vel.y;
+                
+                if(0>this.y || this.y + this.side > HEIGHT){
+                    this.vel.y *= -1;
+                }
+                /* to make suer is ther any intersect*/
+                var isIntersect = function(ax,ay,aw,ah,bx,by,bw,bh) {
+                    return (ax< bx+bw && bx < ax+aw && ay<by+bh &&by<ay+ah);
+                }
+                var dic = this.vel.x>0 ? ai : palyer;
+                if(isIntersect(dic.x,dic.y,dic.width,dic.height,this.x,this.y,this.side,this.side)){
+                    if (dic == palyer){
+                        if(navigator.appName='Netscape'){
+                        this.count.firstChild.nodeValue ++;}
+                    }
+                    else{
+                        this.count.innerText++;
+                    }
+                    
+                    /* the way to change the vel .... change the direction of x and y, 
+                     actualyjust ignore the math stuff lol*/
+                     var n = (this.y+this.side - dic.y)/(dic.height+this.side);
+			         var phi = 0.25*pi*(2*n - 1); // pi/4 = 45
+			         // calculate smash value and update velocity
+			         var smash = Math.abs(phi) > 0.2*pi ? 1.5 : 1;
+			         this.vel.x = smash*(dic===palyer ? 1 : -1)*this.speed*Math.cos(phi);
+			         this.vel.y = smash*this.speed*Math.sin(phi);
+                }
+                
+                if(0>this.x+this.side ){
+                    alert("you lose!");
+                    ball.x = (WIDTH - ball.side)/2;
+                    ball.y = ( HEIGHT - ball.side)/2;
+                    this.vel.x =0;
+                    this.vel.y =0;
+                }
+            },
+            draw: function(){
+                ctx.fillRect(this.x,this.y,this.side,this.side);
+            },
+        };
+        
+        
+        function main(){
+            canvas = document.createElement("canvas");
+            canvas.width = WIDTH;
+            canvas.height = HEIGHT;
+            ctx = canvas.getContext("2d");
+            document.body.appendChild(canvas);
+            
+            keystate={};
+            document.addEventListener("keydown",function(evt){
+               keystate[evt.keyCode] = true; 
+            });
+            document.addEventListener("keyup",function(evt){
+               delete keystate[evt.keyCode];
+            });
+            
+            // pause the game
+            var pause = document.getElementById('pause');
+            pause.addEventListener('click',function(){
+                pause_vel.x = ball.vel.x;
+                pause_vel.y = ball.vel.y;
+                
+                ball.vel.x = 0;
+                ball.vel.y = 0;
+                console.log(pause_vel.x);
+            });
+            
+            var start = document.getElementById('start');
+            start.addEventListener('click',function(){
+                ball.vel.x = pause_vel.x;
+                ball.vel.y = pause_vel.y;
+            });
+            
+            
+    
+            
+            
+            init();
+        
+            
+            var loop = function(){
+                update();
+                draw();
+                
+                window.requestAnimationFrame(loop,canvas);
+            };
+            
+            window.requestAnimationFrame(loop,canvas);
+        }
+        function init(){
+            palyer.x = palyer.width;
+            palyer.y = (HEIGHT-palyer.height)/2;
+            ai.x = WIDTH-(palyer.width+ai.width);
+            ai.y =  (HEIGHT-ai.height)/2;
+            
+            ball.x = (WIDTH - ball.side)/2;
+            ball.y = ( HEIGHT - ball.side)/2;
+            ball.vel = {
+                x : ball.speed,
+                y : 0,
+            }
+        }
+        function update(){
+            ball.update();
+            ai.update();
+            palyer.update();
+        }
+        function draw(){
+            ctx.fillRect(0,0,WIDTH,HEIGHT);
+            ctx.save();
+            ctx.fillStyle = "#fff";
+            ball.draw();
+            ai.draw();
+            palyer.draw();
+            
+            
+            var w = 4;
+            var x = (WIDTH -  w)/2;
+            y =0;
+            var step =HEIGHT/15;
+            while(y<HEIGHT){
+                ctx.fillRect(x,y,w,step*0.5);
+                y += step;
+            }
+            ctx.restore();
+            
+        }
+        main();
+    </script>
+    </body>
+</html>
